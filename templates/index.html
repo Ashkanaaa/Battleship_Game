@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../static/style.css">
+    <link rel="shortcut icon" href="#">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js" integrity="sha512-q/dWJ3kcmjBLU4Qc47E4A9kTB4m3wuTY7vkFJDTZKjTs8jhyGQnaUrxa0Ytd0ssMZhbNua9hE+E7Qv1j+DyZwA==" crossorigin="anonymous"></script>
+    <title>Battle Ship</title>
+</head>
+<body>
+    <header class="header"></header>
+
+    <main>
+        <section class="Left Board">
+            <div class = "Grid" id="PlayerGrid">
+            </div>
+        </section>
+        <section class="Middle">
+            
+            <div class="GameInfo">
+                <h1>Game Information</h1>
+                <p class="Instructions">*Use the Vertical button to change the orientation of the ships*</p>
+                <p class="Instructions">*Drag-and-drop or use the randomize button to position ships*</p>
+                <p class="Instructions">*Hit the Ready button once all the ships have been placed*</p>
+                <p class="Instructions">*With sound on, a 4-second delay occurs before turn-switch to allow sound playback. Mute to bypass this delay (singleplayer only).*</p>
+                <h3 id="roomID"></h3>
+                <h4 id="dynamic_info"></h4>
+                <button id="mute-b"></button> 
+            </div>
+            <div class="Button-Section"> 
+              <button id="ready-b">Ready</button>
+              <button id="randomize-b">Randomize</button>
+              <button id="position-B">Vertical</button> 
+            </div>
+            
+            <div class="Ships">
+                <div class="Carrier Grey" draggable="true">
+                </div>
+
+                <div class="Battleship Yellow" draggable="true">
+                </div>
+
+                
+                <div class="Submarine Red" draggable="true">
+                </div>
+
+                <div class="Destroyer Brown" draggable="true">
+                </div>
+
+                <div class="Cruiser Green" draggable="true">
+                </div>
+            </div>
+        </section>
+
+        <section class="Right Board">
+            <div class = "Grid" id="EnemyGrid"></div>
+        </section>
+   </main>
+
+    <script>
+        var socket = io();        
+    </script>
+    
+    <script src="../static/app.js"></script>
+</body>
+</html>
