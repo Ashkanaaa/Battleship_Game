@@ -1,8 +1,12 @@
 from flask import Flask, render_template, redirect,url_for, request, session
+import mysql.connector
 from flask_socketio import SocketIO,join_room,leave_room,send,emit
 from string import ascii_uppercase
 from datetime import timedelta
 import random, json
+import yaml
+
+from flask_mysqldb import MySQL
 
 from __init__ import createApp, createSio
 from game import  handle_ready,setUpData,handle_fire
@@ -19,6 +23,32 @@ rooms = {}
 #list of all the request.sid that are in singleplayer mode
 singleplayers = []
 
+# Configure db
+db = yaml.load(open('db.yaml'), Loader=yaml.SafeLoader)
+application.config['MYSQL_HOST'] = db['mysql_host']
+application.config['MYSQL_USER'] = db['mysql_user']
+application.config['MYSQL_PASSWORD'] = db['mysql_password']
+application.config['MYSQL_DB'] = db['mysql_db']
+
+def open_db_connection():
+    try:
+        connection = mysql.connector.connect(
+            host='your_host',
+            user='your_username',
+            password='your_password',
+            database='your_database'
+        )
+        print("Connected to MySQL database successfully!")
+        return connection
+    except mysql.connector.Error as error:
+        print("Failed to connect to MySQL database:", error)
+        return None
+
+def close_db_connection(connection):
+    if connection:
+        connection.close()
+        print("Connection to MySQL database closed.")
+   
 #generates a random room ID based on length parameter
 def generateCode(length):
     while True:
