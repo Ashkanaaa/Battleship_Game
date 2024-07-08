@@ -7,7 +7,7 @@ import random
 def createApp():
     app = Flask(__name__)
     #app.config["DEBUG"] = True
-    app.config["SECRET_KEY"] = "ashy"
+    app.config["SECRET_KEY"] = "ash"
     return app
 #creating SocketIO object
 def createSio(app):

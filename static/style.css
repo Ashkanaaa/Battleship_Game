@@ -263,9 +263,42 @@ button{
     top: 0px;
     left: 0px;
   }
+
+  #stats-b{
+    font-size: 16px;
+    font-weight: 200;
+    letter-spacing: 1px;
+    padding: 13px 20px 13px;
+    outline: 0;
+    border: 1px solid rgb(0, 47, 255);
+    cursor: pointer;
+    position: relative;
+    background-color: rgba(0, 0, 0, 0);
+    user-select: none;
+    -webkit-user-select: none;
+    touch-action: manipulation;
+    margin-top: 10%;
+  }
+  
+  #stats-b:after {
+    content: "";
+    background-color: #ffe54c;
+    width: 100%;
+    z-index: -1;
+    position: absolute;
+    height: 100%;
+    top: 7px;
+    left: 7px;
+    transition: 0.2s;
+  }
+  
+  #stats-b:hover:after {
+    top: 0px;
+    left: 0px;
+  }
   
   @media (min-width: 768px) {
-      #multiplayer-b {
+      #stats-b {
       padding: 13px 50px 13px;
     }
   }
@@ -451,4 +484,56 @@ input[type="submit"]:active{
 
 #error{
     color: #0f0;
+}
+
+table{
+  width: 100%;
+}
+
+table tr td{
+  position: relative;
+  min-height: 35px;
+}
+
+table { 
+  width: 100%; 
+  border-collapse: collapse; 
+}
+th { 
+  background: #030303; 
+  color: white; 
+  font-weight: bold; 
+}
+td, th { 
+  line-height: 35px;
+  vertical-align: middle; 
+  border: 1px solid #000; 
+  text-align: left; 
+}
+
+@media screen and (max-width: 650px){
+thead {
+display: none;
+}
+
+tr:nth-child(2n){
+background: #ccc;
+}
+
+td {
+/*вывод таблицы*/
+display: block;
+width: 50%;
+padding-left: 50%;
+position: relative;
+}
+
+td:before {
+position: absolute;
+width: 45%;
+padding-right: 10px;
+left: 0;
+white-space: nowrap;
+content: attr(data-title);
+}
 }

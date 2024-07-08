@@ -5,7 +5,7 @@
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="../static/style.css">
-    <title>Join Game</title>
+    <title>Login</title>
 </head>
 
 <body id="room">
@@ -16,28 +16,24 @@
 
     <div class="content"> 
 
-     <h2 id="room-h2">Join Game</h2> 
+     <h2 id="room-h2">Login</h2> 
      <h3 id="room-h3">
-        *To start a new game: Enter a name and click on Create Room!<br>
-        * To join a game: Enter your name and the Room ID below, then click on Join Room
+        *If you have a username and password, you can simply log in using them<br>
+        * If this is your first time, you can create an account and log in by inputting a username and password
      </h3>
 
-     <form method="POST" class="form"> 
+     <form id="loginForm" method="POST" class="form"> 
 
       <div class="inputBox"> 
-        <input type="text" required name="name"> <i>Name</i> 
+        <input type="text" required name="username"> <i>Username</i> 
       </div> 
 
       <div class="inputBox"> 
-        <input type="text" name="code"> <i>Room Id</i> 
+        <input type="text" required name="password"> <i>Password</i> 
       </div> 
 
       <div class="inputBox"> 
-        <input type="submit" name="join" value="Join Room">
-      </div> 
-
-      <div class="inputBox"> 
-        <input type="submit" name="create" value="Create a Room"> 
+        <input type="submit" name="login" value="LOGIN">
       </div> 
 
       {% if error %}
@@ -53,7 +49,9 @@
    </div> 
 
   </section>
+  <script src="../static/request.js"></script>
 
+  <script src="../static/login.js"></script>
  </body>
   
 </html>

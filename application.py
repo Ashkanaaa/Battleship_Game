@@ -1,15 +1,19 @@
-from flask import Flask, render_template, redirect,url_for, request, session
+from flask import Flask, render_template, redirect,url_for, request, session, jsonify
+import jwt
 import mysql.connector
 from flask_socketio import SocketIO,join_room,leave_room,send,emit
 from string import ascii_uppercase
 from datetime import timedelta
 import random, json
 import yaml
+import datetime
+import pytz
 
 from flask_mysqldb import MySQL
 
 from __init__ import createApp, createSio
 from game import  handle_ready,setUpData,handle_fire
+from db.dbManager import dbManager
 
 #creating flask app
 application = createApp()
@@ -24,31 +28,28 @@ rooms = {}
 singleplayers = []
 
 # Configure db
-db = yaml.load(open('db.yaml'), Loader=yaml.SafeLoader)
-application.config['MYSQL_HOST'] = db['mysql_host']
-application.config['MYSQL_USER'] = db['mysql_user']
-application.config['MYSQL_PASSWORD'] = db['mysql_password']
-application.config['MYSQL_DB'] = db['mysql_db']
+dbConfig = yaml.load(open('db/dbConfig.yaml'), Loader=yaml.SafeLoader)
+# application.config['MYSQL_HOST'] = db['mysql_host']
+# application.config['MYSQL_USER'] = db['mysql_user']
+# application.config['MYSQL_PASSWORD'] = db['mysql_password']
+# application.config['MYSQL_DB'] = db['mysql_db']
 
-def open_db_connection():
-    try:
-        connection = mysql.connector.connect(
-            host='your_host',
-            user='your_username',
-            password='your_password',
-            database='your_database'
-        )
-        print("Connected to MySQL database successfully!")
-        return connection
-    except mysql.connector.Error as error:
-        print("Failed to connect to MySQL database:", error)
-        return None
+user_data = [
+    {'id': '1', 'date': '2024/04/21', 'result': 'Won', 'mode': 'Single_Player', 'extra_info': 'None'}, 
+    {'id': '2', 'date': '2024/04/21', 'result': 'Lost', 'mode': 'Single_Player', 'extra_info': 'None'}
+]
 
-def close_db_connection(connection):
-    if connection:
-        connection.close()
-        print("Connection to MySQL database closed.")
-   
+def getPDT():
+    current_time_utc = datetime.datetime.utcnow()
+
+    # Convert UTC time to PDT timezone
+    pdt_timezone = pytz.timezone('America/Los_Angeles')
+    current_time_pdt = current_time_utc.astimezone(pdt_timezone)
+
+    # Set the expiration time (1 hour from the current PDT time)
+    expiration_time_pdt = current_time_pdt + datetime.timedelta(hours=1)
+    return expiration_time_pdt
+
 #generates a random room ID based on length parameter
 def generateCode(length):
     while True:
@@ -59,9 +60,66 @@ def generateCode(length):
             break
     return code
 
+@application.route('/stats', methods=['POST', 'GET'])
+def stats():
+    if request.method == 'POST':
+        data = request.get_json()
+        token = data.get('token')
+        # decoded_token = jwt.decode(token, application.config['SECRET_KEY'], algorithms=['HS256'])
+        # print('TOKENNNNNNN' + str(decoded_token['user_id']))
+        try:
+            # Decode the JWT token
+            print('HEYYYYYYYYYYYYYY')
+            decoded_token = jwt.decode(token, application.config['SECRET_KEY'], algorithms=['HS256'])
+            print('TOKENNNNNNN' + str(decoded_token))
+            # Return the decoded token as JSON response
+            return render_template('stats.html', data = user_data)
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Expired token'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Invalid token'}), 401
+    # else:
+    #     return render_template('stats.html', data = data)
+
+@application.route('/login', methods=["POST", "GET"])
+def login():
+    if request.method == "POST":
+        data = request.get_json()
+        username = data.get('username')
+        password = data.get('password')
+   
+        db_manager = dbManager(dbConfig['mysql_host'], dbConfig['mysql_user'], dbConfig['mysql_password'], dbConfig['mysql_db'])
+
+        if db_manager.validate_login(username, password):
+            user_id = db_manager.get_user_id(username)
+            db_manager.close_connection()
+            print('IDDDDDDDDDDDD' + str(user_id))
+            payload = {
+                'user_id': user_id,
+                'exp': getPDT()
+            }
+
+            token = jwt.encode(payload, application.config['SECRET_KEY'], algorithm='HS256')
+             # Return the token as part of a JSON response
+            return jsonify({'token': token})
+        elif db_manager.username_exists(username):
+            return render_template('login.html', error = 'Invalid username or password')
+        else:
+            db_manager.create_new_user(username, password)
+            return render_template('login.html', error = 'Your new account has been created, login with your credentials!')
+    else:
+        return render_template('login.html')
+
+@application.route('/main-menu', methods=['POST', 'GET'])
+def main_menu():
+    if request.method == 'POST':
+        print('POST')
+    else:
+        return render_template('menu.html')
+        
 @application.route("/", methods=["POST","GET"])
 def home():
-    return render_template("menu.html")
+    return render_template('login.html')
 
 @application.route("/singleplayer")
 def singlePlayer():
