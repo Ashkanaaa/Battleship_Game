@@ -1,7 +1,3 @@
-const HttpMethod = {
-    post: 'POST',
-    get: 'GET'
-}
 document.getElementById("statsForm").addEventListener("submit", function(event) {
     event.preventDefault()
 
@@ -10,12 +6,10 @@ document.getElementById("statsForm").addEventListener("submit", function(event) 
         token: localStorage.getItem('token'),
     })
     makeRequest('/stats', HttpMethod.post, header, body)
-        .then(data => {
-            console.log('Response data:', data.token)
-            localStorage.setItem('token', data.token)    
-            window.location.href = '/main-menu'
+        .then( () => {
+          console.log('Stats request was successful')
         })
         .catch(error => {
             console.error('Request failed:', error)
-        })
+    })
 })

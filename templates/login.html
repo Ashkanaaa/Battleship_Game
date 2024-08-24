@@ -35,12 +35,7 @@
       <div class="inputBox"> 
         <input type="submit" name="login" value="LOGIN">
       </div> 
-
-      {% if error %}
-      <ul>
-          <li id="error">{{error}}</li>
-      </ul>
-      {% endif %}
+      <div id="message"></div> <!-- Element to display error messages -->
 
     </form> 
 

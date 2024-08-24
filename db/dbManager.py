@@ -1,4 +1,5 @@
 import mysql.connector
+from functools import wraps
 
 class dbManager:
     def __init__(self, host, user, password, database):
@@ -27,10 +28,29 @@ class dbManager:
             self.connection.close()
             print("Connection to MySQL database closed.")
     
+    def ensure_and_close_connection(func):
+        @wraps(func)
+        def wrapper(self, *args, **kwargs):
+            if self.connection is None or not self.connection.is_connected():
+                print("Reconnecting to MySQL database...")
+                self.connection = self.connect_to_database()
+                if self.connection is None:
+                    print("Failed to reconnect to the database.")
+                    return None
+            try:
+                result = func(self, *args, **kwargs)
+                return result
+            finally:
+                if self.connection is not None and self.connection.is_connected():
+                    print("Closing the database connection.")
+                    self.close_connection()
+                    self.connection = None
+        return wrapper
+    
     def open_cursor(self):
         if self.connection:
             return self.connection.cursor()
-    
+        
     def close_cursor(self, cur):
         cur.close()
 
@@ -41,6 +61,7 @@ class dbManager:
         cursor.close()
         return result
     
+    @ensure_and_close_connection
     def validate_login(self, username, password):
         if self.connection:
             cur = self.open_cursor()
@@ -49,14 +70,10 @@ class dbManager:
             cur.execute(query, (username, password))
             user = cur.fetchone()
             self.close_cursor(cur)
+        
+            return bool(user)
 
-            if user:
-                print("User valiodated successfully")
-                return True
-            else:
-                print("Invalid username or password")
-                return False
-
+    @ensure_and_close_connection
     def username_exists(self, username):
         if self.connection:
             query = """
@@ -77,7 +94,19 @@ class dbManager:
             return bool(result[0])
         else:
             print("Failed to connect to MySQL database")
-    
+
+    @ensure_and_close_connection
+    def create_new_user(self, username, password):
+        if self.connection:
+            query = "INSERT INTO Users (username, password) VALUES (%s, %s)"
+            cur = self.open_cursor()
+            cur.execute(query, (username, password))
+            self.connection.commit()
+            self.close_cursor(cur)
+        else:
+            print("Failed to connect to MySQL database")
+            
+    @ensure_and_close_connection
     def get_user_id(self, username):
         if self.connection:
             query = "SELECT user_id FROM Users WHERE username = %s;"
@@ -88,16 +117,3 @@ class dbManager:
             return result[0]
         else:
             print("Failed to connect to MySQL database")
-    
-    def create_new_user(self, username, password):
-        if self.connection:
-            query = "INSERT INTO Users (username, password) VALUES (%s, %s)"
-            cur = self.open_cursor()
-            cur.execute(query, (username, password))
-            self.connection.commit()
-            self.close_cursor(cur)
-        else:
-            print("Failed to connect to MySQL database")
-
-
-
