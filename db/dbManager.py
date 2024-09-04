@@ -117,3 +117,18 @@ class dbManager:
             return result[0]
         else:
             print("Failed to connect to MySQL database")
+    
+    @ensure_and_close_connection
+    def get_username(self, user_id):
+        if self.connection:
+            query = "SELECT username FROM Users WHERE user_id = %s;"
+            cur = self.open_cursor()
+            cur.execute(query, (user_id,))
+            result = cur.fetchone()
+            self.close_cursor(cur)
+            if result:
+                return result[0]
+            else:
+                return None
+        else:
+            print("Failed to connect to MySQL database")

@@ -17,3 +17,11 @@ function makeRequest(url, method, header, body){
         throw error;
     });
 }
+
+function showMessage(message) {
+    const messageElement = document.getElementById('message');
+    if (messageElement) {
+        messageElement.textContent = message;
+        messageElement.style.color = 'red';
+    }
+}

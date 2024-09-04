@@ -25,11 +25,5 @@ document.getElementById("loginForm").addEventListener("submit", function(event) 
         });
 })
 
-function showMessage(message) {
-    const messageElement = document.getElementById('message');
-    if (messageElement) {
-        messageElement.textContent = message;
-        messageElement.style.color = 'red';
-    }
-}
+
 

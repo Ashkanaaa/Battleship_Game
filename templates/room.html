@@ -18,15 +18,11 @@
 
      <h2 id="room-h2">Join Game</h2> 
      <h3 id="room-h3">
-        *To start a new game: Enter a name and click on Create Room!<br>
-        * To join a game: Enter your name and the Room ID below, then click on Join Room
+        *To start a new game: Click on Create Room!<br>
+        * To join a game: Enter the Room ID below, then click on Join Room
      </h3>
 
-     <form method="POST" class="form"> 
-
-      <div class="inputBox"> 
-        <input type="text" required name="name"> <i>Name</i> 
-      </div> 
+     <form id="roomForm" method="POST" class="form"> 
 
       <div class="inputBox"> 
         <input type="text" name="code"> <i>Room Id</i> 
@@ -45,7 +41,7 @@
           <li id="error">{{error}}</li>
       </ul>
       {% endif %}
-
+      <div id="message"></div> <!-- Element to display error messages -->
     </form> 
 
     </div> 
@@ -53,7 +49,43 @@
    </div> 
 
   </section>
+    <script>
+        document.getElementById('roomForm').addEventListener('submit', function(event) {
+            event.preventDefault();
 
+            const formData = new FormData(this);
+            const submitter = event.submitter;
+            const header = {'Content-Type': 'application/json'}
+            const body = {
+              token: localStorage.getItem('token')
+            };
+            
+            if (submitter.name === 'join') {
+                console.log("Join Room button clicked");
+                const code = formData.get('code');
+                if (!code){
+                  alert("Room ID is required to join a room.");
+                  return;
+                }
+                body.code = code
+            }
+            makeRequest('/room', HttpMethod.post, header, JSON.stringify(body))
+            .then(data => {
+              if (data.redirect) {
+                console.log('redirect')
+                window.open(data.redirect); ;
+              }
+              if(data.message){
+                showMessage(response.message)
+              }
+            })
+            .catch(error => {
+              console.error('Request failed:', error)
+            });
+        });
+
+    </script>
+  <script src="../static/request.js"></script>
  </body>
   
 </html>

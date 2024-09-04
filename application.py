@@ -54,11 +54,28 @@ def generateCode(length):
     return code
 
 def generateToken(username, db_manager):
+    exp_time = datetime.datetime.now() + datetime.timedelta(hours=48)
+    print('EXP TIMEEEE:' + str(exp_time))
+
+    #expiration_time = datetime.datetime.fromtimestamp(int(exp_time))
     payload = {
                 'user_id': db_manager.get_user_id(username),
-                'exp': datetime.datetime.now() + datetime.timedelta(seconds=30)
+                'exp': exp_time
             }
     return jwt.encode(payload, application.config['SECRET_KEY'], algorithm='HS256')
+
+def decode_token(token):
+    try:
+        # Decode the token using the provided secret key and algorithm
+        decoded_token = jwt.decode(token, application.config['SECRET_KEY'], algorithms=['HS256'])
+        print('DECODED TOKEN'+ str(decode_token))
+        return decoded_token
+    except jwt.ExpiredSignatureError:
+        # Handle the case where the token has expired
+        return {'error': 'Token has expired'}
+    except jwt.InvalidTokenError:
+        # Handle the case where the token is invalid
+        return {'error': 'Invalid token'}
 
 
 # @application.errorhandler(401)
@@ -99,10 +116,43 @@ def login():
 
 @application.route('/main-menu', methods=['POST', 'GET'])
 def main_menu():
-    if request.method == 'POST':
-        print('POST')
+    return render_template('menu.html')
+
+@application.route("/singleplayer")
+def singlePlayer():
+    return render_template("index.html")
+
+@application.route("/room", methods=["POST","GET"])
+def room():
+    session.clear()
+    if request.method == "POST":
+        data = request.get_json()
+        print (data)
+        token = decode_token(data.get('token'))
+        print(token)
+        code = data.get('code') if 'code' in data else None
+        
+        if not code: #create new room if they press create button and name is entered
+            print('CREATED A NEW ROOM')
+            room = generateCode(5)
+            rooms[room] = {"members":0} #initially set the members in the room to 0 until the players connect using the object in index.html
+        elif code not in rooms: #if they are joining the room but their session ID is not valid
+            print('CODE NOT IN ROOMS')
+            return jsonify({'message': 'Room ID does not exist'}), 404
+        if code and rooms[room]['members']>=2: #if room already has 2 players in it it avoids connection and goes back to room.html
+            print("FROM ROOM: " + str(rooms[room]['members']))
+            return jsonify({'message': 'This room already has 2 players'}), 401
+        #store the room and name in the session assicoiated with the client
+        db_manager = create_db_manager()
+        session['room'] = room
+        session['user_id'] = token.get('user_id')
+        session['name'] = db_manager.get_username(token.get('user_id'))
+        print('DB NAME')
+        print(session)
+        #load the game 
+        return jsonify({'redirect': url_for('game')}), 200
     else:
-        return render_template('menu.html')
+        return render_template("room.html")
 
 @application.route('/stats', methods=['POST', 'GET'])
 def stats():
@@ -125,55 +175,19 @@ def stats():
     # else:
     #     return render_template('stats.html', data = data)
 
-@application.route("/singleplayer")
-def singlePlayer():
-    return render_template("index.html")
-
-@application.route("/room", methods=["POST","GET"])
-def room():
-    session.clear()
-    if request.method == "POST":
-        name = request.form.get("name")
-        code = request.form.get("code")
-        join = request.form.get("join", False) #The second argument of get() is the default value to be returned if the "join" field does not exist in the form data. In this case, if the "join" field is not present, the variable join will be set to False.
-        create = request.form.get("create", False) 
-
-        #if no name was entered
-        if not name:
-            return render_template("room.html", error="Please enter a name.", code = code, name = name)
-        #if Join was hit but no game ID was entered
-        if join != False and not code:
-            return render_template("room.html", error="Please enter a Room ID.", code = code, name = name)
-        
-        room = code
-        if create != False: #create new room if they press create button and name is entered
-            room = generateCode(5)
-            rooms[room] = {"members":0} #initially set the members in the room to 0 until the players connect using the object in index.html
-        elif code not in rooms: #if they are joining the room but their session ID is not valid
-            return render_template("room.html", error="Room ID does not exist", code = code, name = name)
-        if join != False and rooms[room]['members']>=2: #if room already has 2 players in it it avoids connection and goes back to room.html
-            print("FROM ROOM: " + str(rooms[room]['members']))
-            return render_template("room.html", error="This Room already has 2 players")
-        #store the room and name in the session assicoiated with the client
-        session["room"] = room
-        session["name"] = name
-        #load the game 
-        return redirect(url_for("game"))
-    else:
-        return render_template("room.html")
-
 @application.route("/game")
 def game():
-    room = session.get("room") #get the room ID associated with client
+    room = session.get('room') #get the room ID associated with client
     if room is None or session.get("name") is None or room not in rooms: #if not valid return to room
+        print('ROOM IS NOT VALID')
         return redirect(url_for("room")) 
     
     return render_template("index.html") 
 
 @sio.on("connect")
 def connect(auth):
-    room = session.get("room")
-    name = session.get("name")
+    room = session.get('room')
+    name = session.get('name')
     #if room and name dont exist append the request.sid to singleplayers list
     if not room or not name:
         singleplayers.append(request.sid)
