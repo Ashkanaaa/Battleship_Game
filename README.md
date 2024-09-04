@@ -1,6 +1,4 @@
 # The Classic BattleShip Game
--Link to the game:
-http://34.213.255.237/
 
 -Gameplay:
 
