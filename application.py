@@ -54,7 +54,7 @@ def generateCode(length):
     return code
 
 def generateToken(username, db_manager):
-    exp_time = datetime.datetime.now() + datetime.timedelta(hours=48)
+    exp_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
     print('EXP TIMEEEE:' + str(exp_time))
 
     #expiration_time = datetime.datetime.fromtimestamp(int(exp_time))
@@ -65,18 +65,10 @@ def generateToken(username, db_manager):
     return jwt.encode(payload, application.config['SECRET_KEY'], algorithm='HS256')
 
 def decode_token(token):
-    try:
-        # Decode the token using the provided secret key and algorithm
-        decoded_token = jwt.decode(token, application.config['SECRET_KEY'], algorithms=['HS256'])
-        print('DECODED TOKEN'+ str(decode_token))
-        return decoded_token
-    except jwt.ExpiredSignatureError:
-        # Handle the case where the token has expired
-        return {'error': 'Token has expired'}
-    except jwt.InvalidTokenError:
-        # Handle the case where the token is invalid
-        return {'error': 'Invalid token'}
-
+    # try:
+    # Decode the token using the provided secret key and algorithm
+    decoded_token = jwt.decode(token, application.config['SECRET_KEY'], algorithms=['HS256'])
+    return decoded_token
 
 # @application.errorhandler(401)
 # def invalid_username_or_password(e):
@@ -128,18 +120,27 @@ def room():
     if request.method == "POST":
         data = request.get_json()
         print (data)
-        token = decode_token(data.get('token'))
+        token = None
+        try:
+            token = decode_token(data.get('token'))
+        except jwt.ExpiredSignatureError:
+            print('looks like expired')
+            print (token)
+            return jsonify({'message': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'message': 'Invalid token'}), 401
+        print('TOKENNNNNNN')
         print(token)
-        code = data.get('code') if 'code' in data else None
+        room = data.get('code') if 'code' in data else None
         
-        if not code: #create new room if they press create button and name is entered
+        if not room: #create new room if they press create button and name is entered
             print('CREATED A NEW ROOM')
             room = generateCode(5)
             rooms[room] = {"members":0} #initially set the members in the room to 0 until the players connect using the object in index.html
-        elif code not in rooms: #if they are joining the room but their session ID is not valid
+        elif room not in rooms: #if they are joining the room but their session ID is not valid
             print('CODE NOT IN ROOMS')
             return jsonify({'message': 'Room ID does not exist'}), 404
-        if code and rooms[room]['members']>=2: #if room already has 2 players in it it avoids connection and goes back to room.html
+        if room and rooms[room]['members']>=2: #if room already has 2 players in it it avoids connection and goes back to room.html
             print("FROM ROOM: " + str(rooms[room]['members']))
             return jsonify({'message': 'This room already has 2 players'}), 401
         #store the room and name in the session assicoiated with the client
@@ -147,8 +148,6 @@ def room():
         session['room'] = room
         session['user_id'] = token.get('user_id')
         session['name'] = db_manager.get_username(token.get('user_id'))
-        print('DB NAME')
-        print(session)
         #load the game 
         return jsonify({'redirect': url_for('game')}), 200
     else:
@@ -181,28 +180,27 @@ def game():
     if room is None or session.get("name") is None or room not in rooms: #if not valid return to room
         print('ROOM IS NOT VALID')
         return redirect(url_for("room")) 
-    
     return render_template("index.html") 
 
 @sio.on("connect")
 def connect(auth):
     room = session.get('room')
     name = session.get('name')
-    #if room and name dont exist append the request.sid to singleplayers list
+    # If room and name dont exist append the request.sid to singleplayers list
     if not room or not name:
         singleplayers.append(request.sid)
         return
-    #if the room does not exist leave the room
+    # If the room does not exist leave the room
     if room not in rooms:
         leave_room(room)
         return
     else:
         join_room(room)
 
-    #when first player joins set the ID to their request.sid
+    # When first player joins set the ID to their request.sid
     if rooms[room]["members"] == 0:
         rooms[room]["ID"] = request.sid
-    #when second player joins set up the data
+    # When second player joins set up the data
     if rooms[room]["members"] == 1:
         setUpData(request.sid,rooms,room,name)
 

@@ -76,7 +76,9 @@
                 window.open(data.redirect); ;
               }
               if(data.message){
-                showMessage(response.message)
+                console.log('MESSSAGEW')
+                console.log(data.message)
+                showMessage(data.message)
               }
             })
             .catch(error => {
