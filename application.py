@@ -35,10 +35,7 @@ dbConfig = yaml.load(open('db/dbConfig.yaml'), Loader=yaml.SafeLoader)
 # application.config['MYSQL_DB'] = db['mysql_db']
 
 
-user_data = [
-    {'id': '1', 'date': '2024/04/21', 'result': 'Won', 'mode': 'Single_Player', 'extra_info': 'None'}, 
-    {'id': '2', 'date': '2024/04/21', 'result': 'Lost', 'mode': 'Single_Player', 'extra_info': 'None'}
-]
+
 
 def create_db_manager():
     return dbManager(dbConfig['mysql_host'], dbConfig['mysql_user'], dbConfig['mysql_password'], dbConfig['mysql_db'])
@@ -54,33 +51,57 @@ def generateCode(length):
     return code
 
 def generateToken(username, db_manager):
-    exp_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
+    exp_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=1)
     print('EXP TIMEEEE:' + str(exp_time))
 
     #expiration_time = datetime.datetime.fromtimestamp(int(exp_time))
     payload = {
                 'user_id': db_manager.get_user_id(username),
-                'exp': exp_time
+                'exp': exp_time,
+                'type': 'Access'
+            }
+    return jwt.encode(payload, application.config['SECRET_KEY'], algorithm='HS256')
+
+def generateRefreshToken(userId):
+    exp_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(days=1)
+    print('EXP TIMEEEE:' + str(exp_time))
+
+    #expiration_time = datetime.datetime.fromtimestamp(int(exp_time))
+    payload = {
+                'user_id': userId,
+                'exp': exp_time,
+                'type': 'Refresh'
             }
     return jwt.encode(payload, application.config['SECRET_KEY'], algorithm='HS256')
 
 def decode_token(token):
-    # try:
-    # Decode the token using the provided secret key and algorithm
     decoded_token = jwt.decode(token, application.config['SECRET_KEY'], algorithms=['HS256'])
     return decoded_token
 
-# @application.errorhandler(401)
-# def invalid_username_or_password(e):
-#     return jsonify(error=str(e)), 401
-
-@application.errorhandler(401)
-def resource_not_found(e):
-    return jsonify(error=str(e)), 401
-
+##########################################################################
 @application.route("/", methods=["POST","GET"])
 def home():
     return render_template('login.html')
+
+@application.route('/token/refresh', methods=['POST', 'GET'])
+def refresh_token():
+    auth_header = request.headers.get('Authorization')
+    try:
+        refresh_token = decode_token(auth_header.split(" ")[1])
+    except jwt.ExpiredSignatureError:
+        print('looks like expired')
+        return jsonify({'message': 'Token has expired'}), 401
+    except jwt.InvalidTokenError:
+        return jsonify({'message': 'Invalid token'}), 401
+    
+    if refresh_token.get('type') == 'Refresh':
+        print('GOT TO THIS STEP')
+        db_manager = create_db_manager()
+        token = generateToken(db_manager.get_username(refresh_token.get('user_id')), db_manager)
+        new_refresh_token = generateRefreshToken(refresh_token.get('user_id'))
+        return jsonify({'token': token, 'refreshToken': new_refresh_token, 'message': 'New access and refresh token successfully generated!'}), 200
+    else:
+        return jsonify({'message': 'Invalid refresh token!'}), 401
 
 @application.route('/login', methods=["POST", "GET"])
 def login():
@@ -93,9 +114,10 @@ def login():
 
         if db_manager.validate_login(username, password):
             token = generateToken(username, db_manager)
+            refresh_token = generateRefreshToken(db_manager.get_user_id(username))
             print('BACKEND TOKEN:' + token)
              # Return the token as part of a JSON response
-            return jsonify({'token': token, 'message': 'Successful Login!'}), 200
+            return jsonify({'token': token, 'refreshToken': refresh_token, 'message': 'Successful Login!'}), 200
         elif db_manager.username_exists(username):
             print('INVALID USERRRRRRRRR HEREE')
             return jsonify({'token': None, 'message': 'The password is invalid or the username already exists'}), 401
@@ -117,20 +139,23 @@ def singlePlayer():
 @application.route("/room", methods=["POST","GET"])
 def room():
     session.clear()
-    if request.method == "POST":
+    if request.method == 'POST':
+        print('HELOOOOOOOOOOOO')
         data = request.get_json()
-        print (data)
+        auth_header = request.headers.get('Authorization')
         token = None
         try:
-            token = decode_token(data.get('token'))
+            token = decode_token(auth_header.split(" ")[1])
         except jwt.ExpiredSignatureError:
             print('looks like expired')
             print (token)
             return jsonify({'message': 'Token has expired'}), 401
         except jwt.InvalidTokenError:
             return jsonify({'message': 'Invalid token'}), 401
-        print('TOKENNNNNNN')
-        print(token)
+        
+        if token.get('type') != 'Access':
+            return  jsonify({'message': 'Refresh token cant be used for accessing this resource'}), 401
+
         room = data.get('code') if 'code' in data else None
         
         if not room: #create new room if they press create button and name is entered
@@ -142,7 +167,7 @@ def room():
             return jsonify({'message': 'Room ID does not exist'}), 404
         if room and rooms[room]['members']>=2: #if room already has 2 players in it it avoids connection and goes back to room.html
             print("FROM ROOM: " + str(rooms[room]['members']))
-            return jsonify({'message': 'This room already has 2 players'}), 401
+            return jsonify({'message': 'This room already has 2 players'}), 403
         #store the room and name in the session assicoiated with the client
         db_manager = create_db_manager()
         session['room'] = room
@@ -153,26 +178,64 @@ def room():
     else:
         return render_template("room.html")
 
+@application.route('/single-player-result', methods=['POST'])
+def single_player_result():
+    if request.method == 'POST':
+        auth_header = request.headers.get('Authorization')
+        token = None
+        try:
+            token = decode_token(auth_header.split(" ")[1])
+        except jwt.ExpiredSignatureError:
+            print('looks like expired')
+            return jsonify({'message': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'message': 'Invalid token'}), 401
+        
+        if token.get('type') != 'Access':
+            return jsonify({'message': 'Refresh token cant be used for accessing this resource'}), 401
+        
+        user_id = token.get('user_id')
+        result = request.args.get('result')
+        db_manager = create_db_manager()
+        if db_manager.update_game_result(user_id, None, result):
+            return jsonify({'message': 'The DB has been successfully updated with the results'}), 200
+        else:
+            return jsonify({'message': 'Failed to update the DB with the results'}), 500
+    else:
+        return jsonify({'error': 'Method Not Allowed'}), 405
+
+
+
 @application.route('/stats', methods=['POST', 'GET'])
 def stats():
     if request.method == 'POST':
+        user_data = {
+            'gameStats': [
+                {'id': '1', 'date': '2024/04/21', 'result': 'Won', 'mode': 'Single_Player', 'extra_info': 'None'}, 
+                {'id': '2', 'date': '2024/04/21', 'result': 'Lost', 'mode': 'Single_Player', 'extra_info': 'None'}
+            ],
+            'playerStats': [
+                {'id': '5', 'date': '2024/04/21', 'result': 'Won'}, 
+                {'id': '9', 'date': '2024/04/21', 'result': 'Lost'}
+            ]
+        }
+        # return jsonify({'message': 'Invalid token', 'stats': user_data}), 401
+        auth_header = request.headers.get('Authorization')
+        token = None
         data = request.get_json()
-        token = data.get('token')
-        # decoded_token = jwt.decode(token, application.config['SECRET_KEY'], algorithms=['HS256'])
-        # print('TOKENNNNNNN' + str(decoded_token['user_id']))
         try:
-            # Decode the JWT token
-            print('HEYYYYYYYYYYYYYY')
-            decoded_token = jwt.decode(token, application.config['SECRET_KEY'], algorithms=['HS256'])
-            print('TOKENNNNNNN' + str(decoded_token))
-            # Return the decoded token as JSON response
-            return render_template('stats.html', data = user_data)
+            token = decode_token(auth_header.split(" ")[1])
         except jwt.ExpiredSignatureError:
-            return jsonify({'error': 'Expired token'}), 400
+            print('looks like expired')
+            return jsonify({'message': 'Token has expired'}), 401
         except jwt.InvalidTokenError:
-            return jsonify({'error': 'Invalid token'}), 401
-    # else:
-    #     return render_template('stats.html', data = data)
+            return jsonify({'message': 'Invalid token'}), 401
+        
+        if token.get('type') != 'Access':
+            return jsonify({'message': 'Refresh token cant be used for accessing this resource'}), 401  
+        return jsonify({'message': 'Invalid token', 'stats': user_data}), 200
+    else:
+        return render_template('stats.html')
 
 @application.route("/game")
 def game():
@@ -186,6 +249,8 @@ def game():
 def connect(auth):
     room = session.get('room')
     name = session.get('name')
+    user_id = session.get('user_id')
+
     # If room and name dont exist append the request.sid to singleplayers list
     if not room or not name:
         singleplayers.append(request.sid)
@@ -197,12 +262,13 @@ def connect(auth):
     else:
         join_room(room)
 
-    # When first player joins set the ID to their request.sid
+    # When first player joins set the enemy_sid to their request.sid
     if rooms[room]["members"] == 0:
-        rooms[room]["ID"] = request.sid
+        rooms[room]["enemy_sid"] = request.sid
+        rooms[room]['enemy_user_id'] = user_id
     # When second player joins set up the data
     if rooms[room]["members"] == 1:
-        setUpData(request.sid,rooms,room,name)
+        setUpData(request.sid,rooms,room,name, user_id)
 
     rooms[room]["members"] += 1 #incrementing the members in a room after a player has successfully joined
     emit('gameinfo_message', "your game ID is: " + room, to=request.sid)

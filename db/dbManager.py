@@ -132,3 +132,67 @@ class dbManager:
                 return None
         else:
             print("Failed to connect to MySQL database")
+
+    @ensure_and_close_connection
+    def update_game_result(self, player1_id, player2_id=None, result=None):
+        if self.connection:
+            cur = self.open_cursor()
+            print(player1_id)
+            if player2_id:
+                print(player2_id)
+            try:
+                # Determine game type based on whether player2_id is provided
+                game_type = 'Single_Player' if player2_id is None else 'Multiplayer'
+                
+                # Player 1 is the winner
+                player1_game_result = 'WON' if player2_id else result
+                player2_game_result = 'LOST' if player2_id else None  # No result if single player
+                
+                # Insert game record without specifying game_date (will default to CURRENT_TIMESTAMP)
+                insert_game_query = """
+                    INSERT INTO Games (player1_id, player2_id, game_type, player1_game_result, player2_game_result)
+                    VALUES (%s, %s, %s, %s, %s);
+                """
+                cur.execute(insert_game_query, (
+                    player1_id,
+                    player2_id,
+                    game_type,
+                    player1_game_result,
+                    player2_game_result
+                                    ))
+                
+                # Update the Users table: if its single player mode, player1 could have WON or LOST but in multiplayer, player2 is always the loser
+                update_player1_query = """
+                    UPDATE Users 
+                    SET 
+                        number_of_games = number_of_games + 1,
+                        number_of_wins = number_of_wins + CASE WHEN %s = 'WON' THEN 1 ELSE 0 END,
+                        number_of_losses = number_of_losses + CASE WHEN %s = 'LOST' THEN 1 ELSE 0 END
+                    WHERE user_id = %s;
+                """
+                cur.execute(update_player1_query, (player1_game_result, player1_game_result, player1_id))
+
+
+                if player2_id:
+                    update_player2_query = """
+                        UPDATE Users 
+                        SET number_of_games = number_of_games + 1, number_of_losses = number_of_losses + 1
+                        WHERE user_id = %s;
+                    """
+                    cur.execute(update_player2_query, (player2_id,))
+                
+                # Commit both the game insert and user updates
+                self.connection.commit()
+                print("Game result and user stats successfully updated.")
+                return True
+            
+            except Exception as e:
+                # Rollback in case of any error
+                self.connection.rollback()
+                print(f"Error updating game and user stats: {e}")
+                return False
+            
+            finally:
+                self.close_cursor(cur)
+        else:
+            print("Failed to connect to MySQL database.")

@@ -370,6 +370,7 @@ function readyToPlay(){
 
     //if ships were placed and other player has joined
     if(Ready && Singleplayer){
+        gameOver()
         element = document.getElementById('ready-b')
         element.style.backgroundColor = 'green'
         Startgame = true //starting the game
@@ -381,21 +382,6 @@ function readyToPlay(){
         socket.emit("ready",convertedMatrix) //send the matrix to the server
         Startgame = true //starting the game
     }
-}
-
-function gameOver(){
-    //user has won
-    if(Turn){
-        printMessage('GameOver! Congrats, You have WON!!!')
-        playSound('../static/effects/victory.mp3')
-    }else{ //computer has won
-        printMessage('GameOver! You have LOST!!!')
-        playSound('../static/effects/defeat.mp3')
-    }
-    element = document.getElementById('ready-b')
-    element.style.backgroundColor = 'red'
-    Startgame = false
-    Finishgame = true
 }
 
 //handle clicks on the enemy`s grid
@@ -441,6 +427,58 @@ function playSound(path){
 }
 
 ///////////////////////////////////////////Singleplayer
+
+async function handle_game_over_request(url) {
+    const header = {
+        'Authorization': `Bearer ${localStorage.getItem('token')}`, 
+        'Content-Type': 'application/json'
+    };
+
+    try {
+        let response = await makeRequest(url, 'POST', header)
+
+        if (response.status === 401) {
+            // Attempt to refresh the token
+            
+            const tokenRefreshed = await refreshAccessToken()
+            if (tokenRefreshed) {
+                // Retry the original request with the new token
+                header['Authorization'] = `Bearer ${localStorage.getItem('token')}`
+                response = await makeRequest(url, 'POST', header)
+                if (response.status !== 200) {
+                    throw new Error(`Failed to fetch stats after token refresh: ${response.status}`);
+                }
+            } else {
+                console.error('No token returned after refresh');
+                return;
+            }
+        } 
+
+    } catch (error) {
+        console.error("Request failed:", error.message); // Log the error message
+        throw error; // Re-throw the error if needed
+    }
+}
+
+// Game Over for single-player mode
+function gameOver(){
+    var url = ''
+    //user has won
+    if(Turn){
+        url = `/single-player-result?result=WON`
+        printMessage('GameOver! Congrats, You have WON!!!')
+        playSound('../static/effects/victory.mp3')
+    }else{ //computer has won
+        url = `/single-player-result?result=LOST`
+        printMessage('GameOver! You have LOST!!!')
+        playSound('../static/effects/defeat.mp3')
+    }
+    element = document.getElementById('ready-b')
+    element.style.backgroundColor = 'red'
+    Startgame = false
+    Finishgame = true
+    handle_game_over_request(url)
+}
 
 //switches the turns between computer and player
 function switchTurns() {

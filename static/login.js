@@ -12,13 +12,15 @@ document.getElementById("loginForm").addEventListener("submit", function(event) 
 
     document.getElementById('loginForm').reset();
 
-    makeRequest('/login', HttpMethod.post, header, body)
-        .then(data => {
-            if (data.token){
-                localStorage.setItem('token', data.token) 
+    makeRequest('/login', 'POST', header, body)
+        .then(response => {
+            if (response.body.token && response.body.refreshToken){
+                localStorage.setItem('token', response.body.token) 
+                localStorage.setItem('refreshToken', response.body.refreshToken) 
+                console.log(response.status)
                 window.open('/main-menu', '_blank'); 
             }
-            showMessage(data.message)
+            showMessage(response.body.message)
         })
         .catch(error => {
             console.error('Request failed:', error)

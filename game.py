@@ -16,9 +16,10 @@ class Ship:
         self.size = size
         self.color = color
 class User:
-    def __init__(self, matrix, opponent, fleet, totalcount,ready, turn):
+    def __init__(self, matrix, opponent, user_id, fleet, totalcount, ready, turn):
         self.matrix = matrix
         self.opponent = opponent #request.sid of opponent
+        self.user_id = user_id # User id assosicated with the DB
         self.fleet = fleet #deep copy of ships list to keep track of the drown ships
         self.totalcount = totalcount #number of total ship cells (17) decremented with each hit
         self.ready = ready
@@ -71,24 +72,28 @@ def gameOver(sid):
     sendMsg(opponent(sid), 'GameOver! You have LOST!!!', False )
     emit('defeat',to=opponent(sid))
 
-#gets called to set up data once the second player has joined the game
-def setUpData(sid,rooms,room,name):
-    playerID = rooms[room]["ID"] #request.id of opponent (player that created the room)
-
+# Set up data once the second player has joined the game
+def setUpData(sid,rooms,room, name, user_id):
+    from application import create_db_manager
+    enemy_sid = rooms[room]['enemy_sid'] #request.id of opponent (player that created the room)
+    enemy_user_id = rooms[room]['enemy_user_id']
     #creating User objects for both players
-    player = User(None, sid, None, 17, False, True)
-    enemy = User(None, playerID, None, 17 ,False, False)
+    player = User(None, sid, user_id, None, 17, False, True)
+    enemy = User(None, enemy_sid, enemy_user_id, None, 17 ,False, False)
 
     #assigning the User object to the approprate request.sid
-    data[playerID] = player
+    data[enemy_sid] = player
     data[sid] = enemy
 
     #let the first player know that the second player has joined
     msg = name + ' has joined the room'
-    sendMsg(playerID, msg, False)
+    sendMsg(enemy_sid, msg, False)
     #enable clicking on the ready button after both players have joined, effectively submitting their matrix to the server
     emit('joined', 'Joined', to=sid)
-    emit('joined', 'Joined', to=playerID)
+    emit('joined', 'Joined', to=enemy_sid)
+    db_manager = create_db_manager()
+    db_manager.update_game_result(data[sid].user_id, data[opponent(sid)].user_id)
+
 
 
 def handle_ready(sid, convertedMatrix):

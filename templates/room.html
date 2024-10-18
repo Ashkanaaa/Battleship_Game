@@ -53,12 +53,13 @@
         document.getElementById('roomForm').addEventListener('submit', function(event) {
             event.preventDefault();
 
-            const formData = new FormData(this);
-            const submitter = event.submitter;
-            const header = {'Content-Type': 'application/json'}
-            const body = {
-              token: localStorage.getItem('token')
-            };
+            const formData = new FormData(this)
+            const submitter = event.submitter
+            const header = {
+              'Authorization': `Bearer ${localStorage.getItem('token')}`,  // Correct format
+              'Content-Type': 'application/json'
+            }
+            const body = {}
             
             if (submitter.name === 'join') {
                 console.log("Join Room button clicked");
