@@ -16,9 +16,10 @@ class Ship:
         self.size = size
         self.color = color
 class User:
-    def __init__(self, matrix, opponent, fleet, totalcount,ready, turn):
+    def __init__(self, matrix, opponent, user_id, fleet, totalcount, ready, turn):
         self.matrix = matrix
         self.opponent = opponent #request.sid of opponent
+        self.user_id = user_id # User id assosicated with the DB
         self.fleet = fleet #deep copy of ships list to keep track of the drown ships
         self.totalcount = totalcount #number of total ship cells (17) decremented with each hit
         self.ready = ready
@@ -66,30 +67,32 @@ def sendMsg(sid,message,broadcast):
 
 #called when game if over        
 def gameOver(sid):
+    from application import create_db_manager
     sendMsg(sid, 'GameOver! Congrats, You have WON!!!', False )    
     emit('victory', to=sid)
     sendMsg(opponent(sid), 'GameOver! You have LOST!!!', False )
     emit('defeat',to=opponent(sid))
+    db_manager = create_db_manager()
+    db_manager.update_game_result(data[sid].user_id, data[opponent(sid)].user_id)
 
-#gets called to set up data once the second player has joined the game
-def setUpData(sid,rooms,room,name):
-    playerID = rooms[room]["ID"] #request.id of opponent (player that created the room)
-
+# Set up data once the second player has joined the game
+def setUpData(second_player_sid, rooms, room, second_player_name, second_player_user_id):
+    first_player_sid = rooms[room]['first_player_sid'] #request.id of opponent (player that created the room)
+    first_player_user_id = rooms[room]['first_player_user_id']
     #creating User objects for both players
-    player = User(None, sid, None, 17, False, True)
-    enemy = User(None, playerID, None, 17 ,False, False)
+    player_1 = User(None, second_player_sid, first_player_user_id, None, 17, False, True)
+    player_2 = User(None, first_player_sid, second_player_user_id, None, 17 ,False, False)
 
     #assigning the User object to the approprate request.sid
-    data[playerID] = player
-    data[sid] = enemy
+    data[first_player_sid] = player_1
+    data[second_player_sid] = player_2
 
     #let the first player know that the second player has joined
-    msg = name + ' has joined the room'
-    sendMsg(playerID, msg, False)
+    msg = second_player_name + ' has joined the room'
+    sendMsg(first_player_sid, msg, False)
     #enable clicking on the ready button after both players have joined, effectively submitting their matrix to the server
-    emit('joined', 'Joined', to=sid)
-    emit('joined', 'Joined', to=playerID)
-
+    emit('joined', 'Joined', to=first_player_sid)
+    emit('joined', 'Joined', to=second_player_sid)
 
 def handle_ready(sid, convertedMatrix):
     opID = data[sid].opponent # request.id of opponent
