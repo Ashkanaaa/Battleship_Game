@@ -1,8 +1,3 @@
-const HttpMethod = {
-    post: 'POST',
-    get: 'GET'
-}
-
 async function makeRequest(url, method, header, body = JSON.stringify({})) {
     try {
         const response = await fetch(url, {
@@ -19,14 +14,11 @@ async function makeRequest(url, method, header, body = JSON.stringify({})) {
         };
     } catch (error) {
         console.error('Request failed:', error);
-        throw error; // Re-throw the error after logging
+        throw error; 
     }
 }
 
-
-// Function to refresh the access token
 async function refreshAccessToken() {
-    console.log('SECOND STEP')
     const header = {
         'Authorization': `Bearer ${localStorage.getItem('refreshToken')}`,  
         'Content-Type': 'application/json'
@@ -40,15 +32,13 @@ async function refreshAccessToken() {
             // Store the new access token in local storage
             localStorage.setItem('token', response.body.token);
             localStorage.setItem('refreshToken', response.body.refreshToken);
-            console.log('Refresj')
-            console.log(response.body.refreshToken)
-            return true; // Return true for a successful refresh
+            return true; 
         } else {
             throw new Error('Failed to refresh access token');
         }
     } catch (error) {
         console.error('Error refreshing token:', error);
-        return false; // Return false if refresh fails
+        return false; 
     }
 }
 

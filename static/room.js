@@ -10,7 +10,6 @@ document.getElementById('roomForm').addEventListener('submit', function(event) {
     const body = {}
     
     if (submitter.name === 'join') {
-        console.log("Join Room button clicked");
         const code = formData.get('code');
         if (!code){
           alert("Room ID is required to join a room.");
@@ -18,15 +17,12 @@ document.getElementById('roomForm').addEventListener('submit', function(event) {
         }
         body.code = code
     }
-    makeRequest('/room', HttpMethod.post, header, JSON.stringify(body))
+    makeRequest('/room', 'POST', header, JSON.stringify(body))
     .then(response => {
       if (response.body.redirect) {
-        console.log('redirect')
         window.open(response.body.redirect); ;
       }
       if(response.body.message){
-        console.log('MESSSAGEW')
-        console.log(response.body.message)
         showMessage(response.body.message)
       }
     })

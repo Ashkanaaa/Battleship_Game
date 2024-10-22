@@ -2,8 +2,6 @@ function populateTable(data) {
   var player_stats_table = document.getElementById("player-stats");
   var game_stats_table = document.getElementById("game-stats");
 
-
-  // Clear existing rows
   player_stats_table.innerHTML = "";
   game_stats_table.innerHTML = "";
 
@@ -15,7 +13,6 @@ function populateTable(data) {
     row.insertCell(2).textContent = item.losses;
   });
 
-  //Populate table with new data
   data.game_stats.forEach((item) => {
     var row = game_stats_table.insertRow();
     row.insertCell(0).textContent = item.date;
@@ -44,7 +41,7 @@ async function request_stats() {
       if (tokenRefreshed) {
         // Retry the original request with the new token
         header["Authorization"] = `Bearer ${localStorage.getItem("token")}`;
-        response = await makeRequest("/stats", "POST", header); // Reuse the same variable
+        response = await makeRequest("/stats", "POST", header); 
 
         // Check for successful response
         if (response.status !== 200) {
@@ -58,11 +55,10 @@ async function request_stats() {
       }
     }
 
-    // Populate table with stats data
     populateTable(response.body.stats);
   } catch (error) {
-    console.error("Request failed:", error.message); // Log the error message
-    throw error; // Re-throw the error if needed
+    console.error("Request failed:", error.message); 
+    throw error; 
   }
 }
 

@@ -17,7 +17,6 @@ document.getElementById("loginForm").addEventListener("submit", function(event) 
             if (response.body.token && response.body.refreshToken){
                 localStorage.setItem('token', response.body.token) 
                 localStorage.setItem('refreshToken', response.body.refreshToken) 
-                console.log(response.status)
                 window.open('/main-menu', '_blank'); 
             }
             showMessage(response.body.message)

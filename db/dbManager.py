@@ -130,9 +130,6 @@ class dbManager:
     def update_game_result(self, player1_id, player2_id=None, result=None):
         if self.connection:
             cur = self.open_cursor()
-            print(player1_id)
-            if player2_id:
-                print(player2_id)
             try:
                 # Determine game type based on whether player2_id is provided
                 game_type = 'Single_Player' if player2_id is None else 'Multiplayer'
@@ -236,7 +233,6 @@ class dbManager:
                         'losses': row[5]
                     }
                     data.append(player_dict)
-                print(data)
                 return data
             else:
                 return None  
