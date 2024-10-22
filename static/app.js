@@ -370,7 +370,6 @@ function readyToPlay(){
 
     //if ships were placed and other player has joined
     if(Ready && Singleplayer){
-        gameOver()
         element = document.getElementById('ready-b')
         element.style.backgroundColor = 'green'
         Startgame = true //starting the game

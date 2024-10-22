@@ -537,3 +537,7 @@ white-space: nowrap;
 content: attr(data-title);
 }
 }
+
+#player-stat-table {
+  margin-bottom: 100px; /* Adjust the value as needed */
+}

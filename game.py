@@ -67,14 +67,16 @@ def sendMsg(sid,message,broadcast):
 
 #called when game if over        
 def gameOver(sid):
+    from application import create_db_manager
     sendMsg(sid, 'GameOver! Congrats, You have WON!!!', False )    
     emit('victory', to=sid)
     sendMsg(opponent(sid), 'GameOver! You have LOST!!!', False )
     emit('defeat',to=opponent(sid))
+    db_manager = create_db_manager()
+    db_manager.update_game_result(data[sid].user_id, data[opponent(sid)].user_id)
 
 # Set up data once the second player has joined the game
 def setUpData(sid,rooms,room, name, user_id):
-    from application import create_db_manager
     enemy_sid = rooms[room]['enemy_sid'] #request.id of opponent (player that created the room)
     enemy_user_id = rooms[room]['enemy_user_id']
     #creating User objects for both players
@@ -91,10 +93,6 @@ def setUpData(sid,rooms,room, name, user_id):
     #enable clicking on the ready button after both players have joined, effectively submitting their matrix to the server
     emit('joined', 'Joined', to=sid)
     emit('joined', 'Joined', to=enemy_sid)
-    db_manager = create_db_manager()
-    db_manager.update_game_result(data[sid].user_id, data[opponent(sid)].user_id)
-
-
 
 def handle_ready(sid, convertedMatrix):
     opID = data[sid].opponent # request.id of opponent

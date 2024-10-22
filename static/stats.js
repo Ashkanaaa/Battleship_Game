@@ -1,26 +1,30 @@
 function populateTable(data) {
-  var game_stats_table = document.getElementById("game-stats");
   var player_stats_table = document.getElementById("player-stats");
+  var game_stats_table = document.getElementById("game-stats");
+
 
   // Clear existing rows
-  game_stats_table.innerHTML = "";
   player_stats_table.innerHTML = "";
+  game_stats_table.innerHTML = "";
+
+
+  data.player_stat.forEach((item) => {
+    var row = player_stats_table.insertRow();
+    row.insertCell(0).textContent = item.total_games;
+    row.insertCell(1).textContent = item.wins;
+    row.insertCell(2).textContent = item.losses;
+  });
 
   //Populate table with new data
-  data.gameStats.forEach((item) => {
+  data.game_stats.forEach((item) => {
     var row = game_stats_table.insertRow();
-    row.insertCell(0).textContent = item.id;
-    row.insertCell(1).textContent = item.date;
+    row.insertCell(0).textContent = item.date;
+    row.insertCell(1).textContent = item.game_id;
     row.insertCell(2).textContent = item.result;
     row.insertCell(3).textContent = item.mode;
-    row.insertCell(4).textContent = item.opponent_username;
+    row.insertCell(4).textContent = item.opponent;
   });
-  data.playerStats.forEach((item) => {
-    var row = player_stats_table.insertRow();
-    row.insertCell(0).textContent = item.id;
-    row.insertCell(1).textContent = item.date;
-    row.insertCell(2).textContent = item.result;
-  });
+
 }
 
 async function request_stats() {

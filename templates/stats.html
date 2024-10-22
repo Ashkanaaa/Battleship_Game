@@ -8,28 +8,27 @@
     <title>Player Stats</title>
 </head>
 
-<table id="statsTable">
-
+<table id="player-stat-table">
+    <thead>
+        <tr>
+            <th>Total games</th>
+            <th>Wins</th>
+            <th>Losses</th>
+        </tr>
+    </thead>
+    <tbody id="player-stats"></tbody>
+</table>
+<table id="game-stats-table">
+    <thead>
+        <tr>
+            <th>Date</th>
+            <th>Game ID	</th>
+            <th>Result</th>
+            <th>Mode</th>
+            <th>Opponent Username</th>
+        </tr>
+    </thead>
     <tbody id="game-stats">
-        {% for item in data %}
-        <tr>
-            <td>{{ item.id }}</td>
-            <td>{{ item.date }}</td>
-            <td>{{ item.result }}</td>
-            <td>{{ item.mode }}</td>
-            <td>{{ item.opponent_username }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-    <tbody id="player-stats">
-        {% for item in data %}
-        <tr>
-            <td>{{ item.totalGames }}</td>
-            <td>{{ item.wins }}</td>
-            <td>{{ item.losts }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
 </table>
 <script src="../static/request.js"></script>
 

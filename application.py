@@ -29,13 +29,6 @@ singleplayers = []
 
 # Configure db
 dbConfig = yaml.load(open('db/dbConfig.yaml'), Loader=yaml.SafeLoader)
-# application.config['MYSQL_HOST'] = db['mysql_host']
-# application.config['MYSQL_USER'] = db['mysql_user']
-# application.config['MYSQL_PASSWORD'] = db['mysql_password']
-# application.config['MYSQL_DB'] = db['mysql_db']
-
-
-
 
 def create_db_manager():
     return dbManager(dbConfig['mysql_host'], dbConfig['mysql_user'], dbConfig['mysql_password'], dbConfig['mysql_db'])
@@ -51,7 +44,7 @@ def generateCode(length):
     return code
 
 def generateToken(username, db_manager):
-    exp_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=1)
+    exp_time = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=1)
     print('EXP TIMEEEE:' + str(exp_time))
 
     #expiration_time = datetime.datetime.fromtimestamp(int(exp_time))
@@ -79,6 +72,7 @@ def decode_token(token):
     return decoded_token
 
 ##########################################################################
+
 @application.route("/", methods=["POST","GET"])
 def home():
     return render_template('login.html')
@@ -140,7 +134,6 @@ def singlePlayer():
 def room():
     session.clear()
     if request.method == 'POST':
-        print('HELOOOOOOOOOOOO')
         data = request.get_json()
         auth_header = request.headers.get('Authorization')
         token = None
@@ -204,25 +197,11 @@ def single_player_result():
     else:
         return jsonify({'error': 'Method Not Allowed'}), 405
 
-
-
 @application.route('/stats', methods=['POST', 'GET'])
 def stats():
     if request.method == 'POST':
-        user_data = {
-            'gameStats': [
-                {'id': '1', 'date': '2024/04/21', 'result': 'Won', 'mode': 'Single_Player', 'extra_info': 'None'}, 
-                {'id': '2', 'date': '2024/04/21', 'result': 'Lost', 'mode': 'Single_Player', 'extra_info': 'None'}
-            ],
-            'playerStats': [
-                {'id': '5', 'date': '2024/04/21', 'result': 'Won'}, 
-                {'id': '9', 'date': '2024/04/21', 'result': 'Lost'}
-            ]
-        }
-        # return jsonify({'message': 'Invalid token', 'stats': user_data}), 401
         auth_header = request.headers.get('Authorization')
         token = None
-        data = request.get_json()
         try:
             token = decode_token(auth_header.split(" ")[1])
         except jwt.ExpiredSignatureError:
@@ -232,8 +211,21 @@ def stats():
             return jsonify({'message': 'Invalid token'}), 401
         
         if token.get('type') != 'Access':
-            return jsonify({'message': 'Refresh token cant be used for accessing this resource'}), 401  
-        return jsonify({'message': 'Invalid token', 'stats': user_data}), 200
+            return jsonify({'message': 'Refresh token cant be used for accessing this resource'}), 401 
+         
+        user_id = token.get('user_id')
+        db_manager = create_db_manager()
+        player_stat = db_manager.get_player_stat(user_id)
+        game_stats = db_manager.get_game_stats(user_id)
+
+        if player_stat and game_stats:
+            data = {
+                'game_stats': game_stats,
+                'player_stat': player_stat
+            }
+            return jsonify({'message': 'Stats were successfully retrieved', 'stats': data}), 200
+        else:
+            return jsonify({'message': 'Failed to retrieve the stats', 'stats': {}}), 500
     else:
         return render_template('stats.html')
 

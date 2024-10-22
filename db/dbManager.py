@@ -54,13 +54,6 @@ class dbManager:
     def close_cursor(self, cur):
         cur.close()
 
-    def execute_query(self, query, params=None):
-        cursor = self.connection.cursor()
-        cursor.execute(query, params)
-        result = cursor.fetchall()
-        cursor.close()
-        return result
-    
     @ensure_and_close_connection
     def validate_login(self, username, password):
         if self.connection:
@@ -148,7 +141,6 @@ class dbManager:
                 player1_game_result = 'WON' if player2_id else result
                 player2_game_result = 'LOST' if player2_id else None  # No result if single player
                 
-                # Insert game record without specifying game_date (will default to CURRENT_TIMESTAMP)
                 insert_game_query = """
                     INSERT INTO Games (player1_id, player2_id, game_type, player1_game_result, player2_game_result)
                     VALUES (%s, %s, %s, %s, %s);
@@ -181,7 +173,6 @@ class dbManager:
                     """
                     cur.execute(update_player2_query, (player2_id,))
                 
-                # Commit both the game insert and user updates
                 self.connection.commit()
                 print("Game result and user stats successfully updated.")
                 return True
@@ -196,3 +187,83 @@ class dbManager:
                 self.close_cursor(cur)
         else:
             print("Failed to connect to MySQL database.")
+        
+    @ensure_and_close_connection
+    def get_game_stats(self, user_id):
+        if self.connection:
+            data = []
+            query = "SELECT * FROM Games WHERE player1_id = %s;"
+            query_2 = "SELECT * FROM Games WHERE player2_id = %s;"
+
+            cur = self.open_cursor()
+
+            cur.execute(query, (user_id,))
+            result = cur.fetchall()
+
+            cur.execute(query_2, (user_id,))
+            result_2 = cur.fetchall()
+
+            self.close_cursor(cur)
+
+            # Process both results
+            data += self.process_result(result, user_is_player1=True)
+            data += self.process_result(result_2, user_is_player1=False)
+            data.sort(key=lambda x: x['game_id'])
+
+            if data:
+                return data
+            else:
+                return [{'date': 'N/A', 'game_id': 'N/A', 'result': 'N/A', 'mode': 'N/A', 'opponent': 'N/A'}]
+        else:
+            print("Failed to connect to MySQL database")
+            return None
+        
+    @ensure_and_close_connection
+    def get_player_stat(self, user_id):
+        if self.connection:
+            query = "SELECT * FROM Users WHERE user_id = %s;"
+            cur = self.open_cursor()
+            cur.execute(query, (user_id,))
+            result = cur.fetchall()  
+            self.close_cursor(cur) 
+
+            if result:
+                data = []
+                for row in result:
+                    player_dict = {
+                        'total_games': row[3],
+                        'wins': row[4],
+                        'losses': row[5]
+                    }
+                    data.append(player_dict)
+                print(data)
+                return data
+            else:
+                return None  
+        else:
+            print("Failed to connect to MySQL database")
+            return None
+        
+    def process_result(self, rows, user_is_player1):
+        data = []
+        for row in rows:
+            game_id, player1_id, player2_id, game_type, player1_result, player2_result, game_date = row
+            
+            # Depending on whether the user is player1 or player2, adjust result and opponent
+            if user_is_player1:
+                result = player1_result
+                opponent_username = self.get_username(player2_id) if player2_id else None
+            else:
+                result = player2_result
+                opponent_username = self.get_username(player1_id) if player1_id else None
+            
+            game_dict = {
+                'date': game_date.strftime('%Y-%m-%d %H:%M:%S'),
+                'game_id': str(game_id),
+                'result': result,
+                'mode': game_type,
+                'opponent': opponent_username if opponent_username else 'N/A'
+            }
+            data.append(game_dict)
+        
+        return data
